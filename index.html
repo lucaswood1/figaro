@@ -1,0 +1,251 @@
+<html>
+<head>
+<title>AudioFire</title>
+
+<style>
+.webSpeech_info {
+	display:none !important;
+}
+#webSpeech_button {
+	padding:50px;
+	display: block;
+	margin-left: 450px;
+}
+.message {
+	display:block;
+	width:800px;
+	margin-left: 100px;
+	margin-right: 100px;
+	margin-top: 50px;
+	margin-bottom: 50px;
+	padding:50px;
+	height: 100px;
+	font-size:22pt
+	-webkit-box-shadow:0 0 10px rgba(0, 0, 0, 0.5);
+	-moz-box-shadow:0 0 10px rgba(0, 0, 0, 0.5);
+	box-shadow:0 0 10px rgba(0, 0, 0, 0.5);
+	overflow: hidden;
+}
+.webSpeech_final, .webSpeech_interim {
+	position: relative;
+	top:-100px;
+	left: 150px;
+	color: #FF8D8D;
+}
+
+</style>
+
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
+<script src="audiosynth.js"></script>
+<script src="jquery.webSpeech-1.0.1.js"></script>
+<script>
+//init connections
+var a;
+var key = ['C','D','E','F','G','A','B','C','D','E','F','G'];
+var octave = [4,4,4,4,4,4,4,5,5,5,5,5,5];
+
+$(document).ready(function() {
+	$('#textarea1').webSpeech({ 
+		  button      : 'webSpeech_button', //id of the initiating button
+		  lang        : 'en-GB',
+		  format      : 'html',            //input, textarea, html
+		  build       : 'overwrite',           //append, overwrite
+		  startImg    : 'mic.gif',
+		  animateImg  : 'mic-animate.gif',
+		  errorImg    : 'mic-slash.gif',
+		  showHelp    : true,
+		  showInterim : true
+	});
+	$('textarea#message').on('input',function() {
+		query = $("textarea#message").val();
+		respondConsole(query);
+	});
+	$('#textarea1').bind("DOMSubtreeModified",function() {
+		query = $("#textarea1").text();
+		respondConsole(query);
+	});
+});
+
+function respondConsole(qry) {
+	qryUpper = qry.toUpperCase();
+	switch(qryUpper) {
+		case "OPEN QUERY RANDOM": 				a = generateRandomArray(); output2Console("Data set generated"); break;
+		case "OPEN QUERY EXAMPLE":				a = [1,2,3,2,1,4,5,6,7,8,9]; output2Console("Data set generated"); break;
+		case "OPEN QUERY SPOT PRICE NEW YORK":
+		case "OPEN QUERY SPOT PRICE CUSHING": 			
+		case "OPEN QUERY SPOT PRICE BRENT": 	openconnection(utilCommand(qryUpper)); break;
+		case "SUMMATION OF VALUES": 			output2Console("The sum of the values is "+math('sum',a)); break;
+		case "AVERAGE OF VALUES": 				output2Console("The average of the values is "+math('avg',a)); break;
+		case "COUNT OF VALUES": 				output2Console("The count of the values is "+math('count',a)); break;
+		case "STANDARD DEVIATION OF VALUES":	output2Console("The standard deviation of the values is "+standardDeviation(a)); break;
+		case "READ VALUES": 					read2Console(a); break;
+		case "READ NORMALIZED VALUES":			read2Console(normalize(a)); break;
+		case "PLAY VALUES": 					playscale(normalize(a)); break;
+		case "PLAY VALUES WITH AVERAGE":		playscale(normalize(a),math('avg',a)); break;
+		case "TEST": 							output2Console("Test Message"); break;
+		default:								output2Console("Please repeat."); break;
+	}
+}
+
+function standardDeviation(values){
+  var avg = average(values);
+  
+  var squareDiffs = values.map(function(value){
+    var diff = value - avg;
+    var sqrDiff = diff * diff;
+    return sqrDiff;
+  });
+  
+  var avgSquareDiff = average(squareDiffs);
+
+  var stdDev = Math.sqrt(avgSquareDiff);
+  return Math.round(stdDev);
+}
+
+function average(data){
+  var sum = data.reduce(function(sum, value){
+    return sum + value;
+  }, 0);
+
+  var avg = sum / data.length;
+  return avg;
+}
+
+function openconnection(dataset) {
+	var resource;
+	switch(dataset) {
+		case "BRENT": resource = 'jsonbrent.json'; break;
+		case "CUSHING": resource = 'jsoncushing.json'; break;
+		case "YORK": resource = 'jsonnewyork.json'; break;
+	}
+	var result;
+	$.getJSON(resource, function(json) {
+		console.log(json);
+		result = $.map(json['series'], function(el) { return el; })
+		console.log(result);
+		output2Console("Opening "+result[0]['description']);
+		
+		var matrix = result[0]['data'];
+		var column = [];
+		for(var i=0; i<matrix.length; i++){
+			column.push(matrix[i][1]);
+		}
+		
+		a = column.reverse();
+	});
+}
+
+function generateRandomArray() {
+	var arr = []
+	while(arr.length < 10){
+	  var randomnumber=Math.ceil(Math.random()*10)
+	  var found=false;
+	  for(var i=0;i<arr.length;i++){
+		if(arr[i]==randomnumber){found=true;break}
+	  }
+	  if(!found)arr[arr.length]=randomnumber;
+	}
+	return arr;
+}
+
+function normalize(input) {
+	var numbers = input,
+    ratio = Math.max.apply(Math, numbers) / 10,
+    l = numbers.length,
+    i;
+	for (i = 0; i < l; i++) {
+		numbers[i] = Math.round(numbers[i] / ratio);
+	}
+	return numbers;
+}
+
+function utilCommand(words) {
+    var n = words.split(" ");
+    return n[n.length - 1];
+}
+
+function read2Console(e2) {
+	e2.forEach(function(entry) {
+		setTimeout(function(){
+			var msg = new SpeechSynthesisUtterance(entry);
+				window.speechSynthesis.speak(msg);
+		}, 500);
+	});
+}
+
+function output2Console(msgInput) {
+	$("#console").prepend(msgInput+"<br>"); 
+	var msg = new SpeechSynthesisUtterance(msgInput);
+		window.speechSynthesis.speak(msg);
+}
+
+function playscale(e,r) {
+	switch (arguments.length) {
+    case 1:
+        var i = 0;
+		e.forEach(function(entry) {
+			console.log(entry)
+			setTimeout(function(){
+				var piano = Synth.createInstrument('piano');
+				piano.play(key[entry], octave[entry], 2);
+			}, i*400);
+			i++;
+		});
+        break;
+    case 2:
+    default:
+		var piano = Synth.createInstrument('organ');
+		piano.play(key[r], octave[r], 10);
+        var i = 0;
+		e.forEach(function(entry) {
+			console.log(entry)
+			setTimeout(function(){
+				var piano = Synth.createInstrument('piano');
+				piano.play(key[entry], octave[entry], 2);
+			}, i*400);
+			i++;
+		});        
+        break;
+    }
+}
+
+function math(aggtype,arr) {
+	var total = 0;
+	switch(aggtype) {
+		case 'sum':
+			$.each(arr,function() {
+				total += this;
+			});
+			break;
+		case 'avg':
+			$.each(arr,function() {
+				total += this;
+			});
+			total = total/arr.length;
+			break;
+		case 'count':
+			total = arr.length;
+			break;	
+	}
+	return Math.round(total);
+}
+
+
+</script>
+
+</head>
+
+<body>
+<div id="textarea1" class="message"></div>
+<button id="webSpeech_button">Record</button>
+
+<div id="hide" style="display:none;">
+	<h2>TextArea2</h2>
+	<textarea id="message" name="message">Test</textarea>
+</div>
+
+<div id="console" class="message"></div>
+
+</body>
+
+</html>
