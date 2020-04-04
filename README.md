@@ -2,7 +2,7 @@
 This was an idea that instead of visualizing data, what if we could hear it. It normalizes values to a single octave scale and then plays back.
 
 ## Requirements
-* audiosynth.js
+* audiosynth.js (Github repo)[https://github.com/keithwhor/audiosynth]
 * Google Voice API
 * Example datasets were JSON files- in this case oil prices over a couple years. Data was normalized between the min and max of the given period. 
 
